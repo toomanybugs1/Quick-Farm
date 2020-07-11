@@ -37,7 +37,7 @@ public final class Main extends JavaPlugin implements Listener {
 
         enabledPlayers = (List<String>) this.getConfig().getList("players-enabled");
         if (enabledPlayers == null) {
-            enabledPlayers = new ArrayList<String>();
+            enabledPlayers = new ArrayList<>();
             getLogger().info("Player list is null.");
             getLogger().info(enabledPlayers.toString());
         }
@@ -112,7 +112,6 @@ public final class Main extends JavaPlugin implements Listener {
     private void tryAutoReplant(BlockBreakEvent event, Player player) {
         Block block = event.getBlock();
         ItemStack seed = getPlantableSeed(block);  // If the broken block wasn't a crop, "seed" will be null, ...
-        Ageable age = (Ageable) block.getBlockData();
 
         if (player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
             event.setCancelled(true);
