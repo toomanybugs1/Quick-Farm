@@ -12,7 +12,6 @@ import com.gmail.nossr50.datatypes.skills.PrimarySkillType;
 import com.gmail.nossr50.util.player.UserManager;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
@@ -93,53 +92,63 @@ public final class Main extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        Block block = event.getBlock();
-        Material blockType = block.getType();
-		// Only trigger a reaction if a farm item was broken.
-        if (blockType == Material.BEETROOTS || blockType == Material.CARROTS
-				|| blockType == Material.POTATOES || blockType == Material.WHEAT) {
-			Player player = event.getPlayer();
-			if (enabledPlayers.contains(player.getName())) {  // Ensure the player has permission to use this plugin.
-				tryReplace(event, block, player);
-			}
-		}
+        Player player = event.getPlayer();
+        if (enabledPlayers.contains(player.getName()))  // Ensure the player has permission to use this plugin.
+            tryAutoReplant(event, player);
     }
 
-    void tryReplace(BlockBreakEvent event, Block block, Player player) {
+    /**
+     * Attempts to automatically replant a crop from seeds in the player's inventory.
+     * 
+     * Fails under any of the following conditions:
+     * <ul>
+     *     <li>the block broken wasn't a crop</li>
+     *     <li>the crop wasn't fully grown</li>
+     *     <li>the player doesn't have the corresponding seeds in his/her inventory.</li>
+     * </ul>
+     * @param event The event containing information about the block that was broken
+     * @param player The player whose inventory will be searched for an auto-plantable seed.
+     */
+    private void tryAutoReplant(BlockBreakEvent event, Player player) {
+        Block block = event.getBlock();
+        ItemStack seed = getPlantableSeed(block);  // If the broken block wasn't a crop, "seed" will be null, ...
         Ageable age = (Ageable) block.getBlockData();
+        boolean cropWasFullyGrown = age.getAge() == age.getMaximumAge();
 
-        if (age.getAge() == age.getMaximumAge()) {
-            ItemStack seed = getPlantableSeed(block);
+        if (cropWasFullyGrown && player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
+            event.setCancelled(true);
 
-            if (player.getInventory().containsAtLeast(seed, 1)) {
-                event.setCancelled(true);
-                List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
+            /*
+             *  QUESTION: This appears to make sure that items that should have been dropped do indeed get dropped.
+             *  If this is the case, shouldn't it be outside of any if statements? It seems as though if we can't
+             *  auto-replant then whatever items would have been dropped are lost...
+             */
+            // Drop all items that would normally be dropped.
+            List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
+            for (ItemStack drop : drops)
+                player.getWorld().dropItemNaturally(block.getLocation(), drop);
 
-                Location loc = block.getLocation();
+            // Auto-replant the crop
+            Block b = block.getLocation().getBlock();  // QUESTION: Is this not just getting a copy of itself?
+            b.setType(block.getType());                // If so, then these first two lines can be removed...
+            Ageable newBlockAge = (Ageable) b.getBlockData();  // ... and here "b" would be replaced by "block"
+            newBlockAge.setAge(0);
 
-                Block b = loc.getBlock();
-                b.setType(block.getType());
-                Ageable newBlockAge = (Ageable) b.getBlockData();
-                newBlockAge.setAge(0);
-
-                if (mcmmo != null) {  // do mcmmo stuff if possible
-                    McMMOPlayer mcPlayer = UserManager.getPlayer(player);
-                    ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
+            // Update the player's inventory to reflect the use of the seed during auto-replanting.
+            for (int i = 0; i < player.getInventory().getSize(); i++) {
+                ItemStack itm = player.getInventory().getItem(i);
+                if (itm != null && itm.getType().equals(seed.getType())) {  // Find the item we just planted,
+                    itm.setAmount(itm.getAmount() - 1);  // decrement the item's amount
+                    player.getInventory().setItem(i, itm.getAmount() > 0 ? itm : null);  // Remove item if amt == 0
+                    player.updateInventory();  // update the player's inventory
+                    break;  // Once found and updated, no need to continue looping through the inventory.
                 }
+            }
 
-                for (ItemStack drop : drops)  // Drop all items that would normally be dropped.
-                	player.getWorld().dropItemNaturally(block.getLocation(), drop);
-
-                // Update the player's inventory to reflect the use of the seed during auto-replanting.
-                for (int i = 0; i < player.getInventory().getSize(); i++) {
-                    ItemStack itm = player.getInventory().getItem(i);
-                    if (itm != null && itm.getType().equals(seed.getType())) {  // Find the item we just planted,
-                        itm.setAmount(itm.getAmount() - 1);  // decrement the item's amount
-                        player.getInventory().setItem(i, itm.getAmount() > 0 ? itm : null);  // Remove item if amt == 0
-                        player.updateInventory();  // update the player's inventory
-                        break;  // Once found and updated, no need to continue looping through the inventory.
-                    }
-                }
+            // do mcmmo stuff if possible
+            if (mcmmo != null) {
+                McMMOPlayer mcPlayer = UserManager.getPlayer(player);
+                ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
             }
         }
     }
@@ -162,11 +171,9 @@ public final class Main extends JavaPlugin implements Listener {
 				return new ItemStack(Material.WHEAT_SEEDS);
 			// case NEW_FARM_PLANT:
 			// return new ItemStack(Material.NEW_FARM_SEED);
-			default:
+			default:  // Indicate no corresponding seed if "block" wasn't a valid crop.
 				return null;
 		}
 	}
 
 }
-
-
