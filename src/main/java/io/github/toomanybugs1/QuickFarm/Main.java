@@ -154,7 +154,7 @@ public final class Main extends JavaPlugin implements Listener {
     }
 
 	/**
-	 * Returns the plantoble version of the given block, if one exists.
+	 * Returns the plantable version of the given block, if one exists.
 	 * @param block The block of which to get the plantable version.
 	 * @return The plantable version of the given block if it exists, otherwise null.
 	 */
