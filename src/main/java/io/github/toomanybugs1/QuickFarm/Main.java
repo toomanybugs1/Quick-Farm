@@ -113,16 +113,10 @@ public final class Main extends JavaPlugin implements Listener {
         Block block = event.getBlock();
         ItemStack seed = getPlantableSeed(block);  // If the broken block wasn't a crop, "seed" will be null, ...
         Ageable age = (Ageable) block.getBlockData();
-        boolean cropWasFullyGrown = age.getAge() == age.getMaximumAge();
 
-        if (cropWasFullyGrown && player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
+        if (player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
             event.setCancelled(true);
 
-            /*
-             *  QUESTION: This appears to make sure that items that should have been dropped do indeed get dropped.
-             *  If this is the case, shouldn't it be outside of any if statements? It seems as though if we can't
-             *  auto-replant then whatever items would have been dropped are lost...
-             */
             // Drop all items that would normally be dropped.
             List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
             for (ItemStack drop : drops)
