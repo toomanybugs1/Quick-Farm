@@ -71,9 +71,9 @@ public final class Main extends JavaPlugin implements Listener {
                 //remove returns true if the name is in the list
                 if (!enabledPlayers.remove(player.getName())) {
                     enabledPlayers.add(player.getName());
-                    sender.sendMessage("ง6[QuickFarm] ง2Quick farming enabled.");
+                    sender.sendMessage("ยง6[QuickFarm] ยง2Quick farming enabled.");
                 } else {
-                    sender.sendMessage("ง6[QuickFarm] ง4Quick farming disabled.");
+                    sender.sendMessage("ยง6[QuickFarm] ยง4Quick farming disabled.");
                 }
 
                 this.getConfig().set("players-enabled", enabledPlayers);
@@ -103,7 +103,6 @@ public final class Main extends JavaPlugin implements Listener {
      * Fails under any of the following conditions:
      * <ul>
      *     <li>the block broken wasn't a crop</li>
-     *     <li>the crop wasn't fully grown</li>
      *     <li>the player doesn't have the corresponding seeds in his/her inventory.</li>
      * </ul>
      * @param event The event containing information about the block that was broken
