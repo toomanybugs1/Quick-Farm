@@ -20,6 +20,10 @@
          <id>spigot-repo</id>
          <url>https://hub.spigotmc.org/nexus/content/repositories/public/</url>
        </repository>
+       <repository>
+           <id>CodeMC</id>
+           <url>https://repo.codemc.org/repository/maven-public</url>
+       </repository>
    </repositories>
    <dependencies>
        <dependency>
@@ -28,5 +32,10 @@
            <version>LATEST</version>
            <scope>provided</scope>
     	</dependency>
+       <dependency>
+           <groupId>com.gmail.nossr50.mcMMO</groupId>
+           <artifactId>mcMMO</artifactId>
+           <version>LATEST</version>
+       </dependency>
    </dependencies>
 </project>
