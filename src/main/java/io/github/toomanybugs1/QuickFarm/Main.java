@@ -92,9 +92,12 @@ public final class Main extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+    	//some events were passing null blocks (specifically when using super breaker in mcmmo)
+    	if (event != null) {
         Player player = event.getPlayer();
         if (enabledPlayers.contains(player.getName()))  // Ensure the player has permission to use this plugin.
             tryAutoReplant(event, player);
+    	}
     }
 
     /**
@@ -112,38 +115,43 @@ public final class Main extends JavaPlugin implements Listener {
     private void tryAutoReplant(BlockBreakEvent event, Player player) {
         Block block = event.getBlock();
         ItemStack seed = getPlantableSeed(block);  // If the broken block wasn't a crop, "seed" will be null, ...
-        Ageable age = (Ageable) block.getBlockData();
-
-        if (player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
-            event.setCancelled(true);
-
-            // Drop all items that would normally be dropped.
-            List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
-            for (ItemStack drop : drops)
-                player.getWorld().dropItemNaturally(block.getLocation(), drop);
-
-            // Auto-replant the crop
-            Block b = block.getLocation().getBlock();  // QUESTION: Is this not just getting a copy of itself?
-            b.setType(block.getType());                // If so, then these first two lines can be removed...
-            Ageable newBlockAge = (Ageable) b.getBlockData();  // ... and here "b" would be replaced by "block"
-            newBlockAge.setAge(0);
-
-            // Update the player's inventory to reflect the use of the seed during auto-replanting.
-            for (int i = 0; i < player.getInventory().getSize(); i++) {
-                ItemStack itm = player.getInventory().getItem(i);
-                if (itm != null && itm.getType().equals(seed.getType())) {  // Find the item we just planted,
-                    itm.setAmount(itm.getAmount() - 1);  // decrement the item's amount
-                    player.getInventory().setItem(i, itm.getAmount() > 0 ? itm : null);  // Remove item if amt == 0
-                    player.updateInventory();  // update the player's inventory
-                    break;  // Once found and updated, no need to continue looping through the inventory.
-                }
-            }
-
-            // do mcmmo stuff if possible
-            if (mcmmo != null) {
-                McMMOPlayer mcPlayer = UserManager.getPlayer(player);
-                ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
-            }
+        
+        //we need to make sure seed is not null because most blocks do not have blockdata that
+        //can be casted to Ageable
+        if (seed != null) {
+	        Ageable age = (Ageable) block.getBlockData();
+	
+	        if (player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
+	            event.setCancelled(true);
+	
+	            // Drop all items that would normally be dropped.
+	            List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
+	            for (ItemStack drop : drops)
+	                player.getWorld().dropItemNaturally(block.getLocation(), drop);
+	
+	            // Auto-replant the crop
+	            Block b = block.getLocation().getBlock();  // QUESTION: Is this not just getting a copy of itself?
+	            b.setType(block.getType());                // If so, then these first two lines can be removed...
+	            Ageable newBlockAge = (Ageable) b.getBlockData();  // ... and here "b" would be replaced by "block"
+	            newBlockAge.setAge(0);
+	
+	            // Update the player's inventory to reflect the use of the seed during auto-replanting.
+	            for (int i = 0; i < player.getInventory().getSize(); i++) {
+	                ItemStack itm = player.getInventory().getItem(i);
+	                if (itm != null && itm.getType().equals(seed.getType())) {  // Find the item we just planted,
+	                    itm.setAmount(itm.getAmount() - 1);  // decrement the item's amount
+	                    player.getInventory().setItem(i, itm.getAmount() > 0 ? itm : null);  // Remove item if amt == 0
+	                    player.updateInventory();  // update the player's inventory
+	                    break;  // Once found and updated, no need to continue looping through the inventory.
+	                }
+	            }
+	
+	            // mcmmo should only reward xp if the crop is fully grown
+	            if (mcmmo != null && age.getAge() == age.getMaximumAge()) {
+	                McMMOPlayer mcPlayer = UserManager.getPlayer(player);
+	                ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
+	            }
+	        }
         }
     }
 
