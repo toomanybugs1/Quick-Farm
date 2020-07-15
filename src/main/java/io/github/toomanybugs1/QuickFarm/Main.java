@@ -1,6 +1,7 @@
 package io.github.toomanybugs1.QuickFarm;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,6 +13,7 @@ import com.gmail.nossr50.datatypes.skills.PrimarySkillType;
 import com.gmail.nossr50.util.player.UserManager;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
@@ -28,16 +30,15 @@ public final class Main extends JavaPlugin implements Listener {
     List<String> enabledPlayers;
     mcMMO mcmmo;
 
-    @SuppressWarnings("unchecked")
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
 
         this.saveDefaultConfig();
 
-        enabledPlayers = (List<String>) this.getConfig().getList("players-enabled");
+        enabledPlayers = this.getConfig().getStringList("players-enabled");
         if (enabledPlayers == null) {
-            enabledPlayers = new ArrayList<>();
+            enabledPlayers = new ArrayList<String>();
             getLogger().info("Player list is null.");
             getLogger().info(enabledPlayers.toString());
         }
@@ -45,35 +46,26 @@ public final class Main extends JavaPlugin implements Listener {
         mcmmo = (mcMMO) Bukkit.getServer().getPluginManager().getPlugin("mcMMO");
         if (mcmmo == null) getLogger().info("This server does not have mcMMO. Disabling mcMMO features.");
         else getLogger().info("mcMMO has been detected!");
-
-        getLogger().info("QuickFarm has been initialized.");
     }
 
-    @Override
-    public void onDisable() {
-        getLogger().info("QuickFarm has been disabled.");
-    }
-
-    @SuppressWarnings("unchecked")
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (cmd.getName().equalsIgnoreCase("togglequickfarm")) {
             if (args.length != 0) {
-                sender.sendMessage("Usage: /togglequickfarm");
                 return false;
             } else if (sender instanceof Player) {
                 //get latest config
                 if (this.getConfig().getList("players-enabled") != null)
-                    enabledPlayers = (List<String>) this.getConfig().getList("players-enabled");
+                    enabledPlayers = this.getConfig().getStringList("players-enabled");
 
                 Player player = (Player) sender;
                 //remove returns true if the name is in the list
                 if (!enabledPlayers.remove(player.getName())) {
                     enabledPlayers.add(player.getName());
-                    sender.sendMessage("§6[QuickFarm] §2Quick farming enabled.");
+                    sender.sendMessage(ChatColor.GOLD + "[QuickFarm] " + ChatColor.DARK_GREEN + "Quick farming enabled.");
                 } else {
-                    sender.sendMessage("§6[QuickFarm] §4Quick farming disabled.");
+                    sender.sendMessage(ChatColor.GOLD + "[QuickFarm] " + ChatColor.DARK_RED + "Quick farming disabled.");
                 }
 
                 this.getConfig().set("players-enabled", enabledPlayers);
@@ -83,7 +75,7 @@ public final class Main extends JavaPlugin implements Listener {
 
             } else {
                 sender.sendMessage("Only players can use this command.");
-                return false;
+                return true;
             }
         }
 
@@ -108,6 +100,7 @@ public final class Main extends JavaPlugin implements Listener {
      *     <li>the block broken wasn't a crop</li>
      *     <li>the player doesn't have the corresponding seeds in his/her inventory.</li>
      * </ul>
+     * 
      * @param event The event containing information about the block that was broken
      * @param player The player whose inventory will be searched for an auto-plantable seed.
      */
@@ -124,7 +117,7 @@ public final class Main extends JavaPlugin implements Listener {
                 event.setCancelled(true);
 
                 // Drop all items that would normally be dropped.
-                List<ItemStack> drops = (List<ItemStack>) block.getDrops(new ItemStack(Material.IRON_HOE), player);
+                Collection<ItemStack> drops = block.getDrops(new ItemStack(Material.IRON_HOE), player);
                 for (ItemStack drop : drops)
                     player.getWorld().dropItemNaturally(block.getLocation(), drop);
 
@@ -156,6 +149,7 @@ public final class Main extends JavaPlugin implements Listener {
 
     /**
      * Returns the plantable version of the given block, if one exists.
+     * 
      * @param block The block of which to get the plantable version.
      * @return The plantable version of the given block if it exists, otherwise null.
      */
