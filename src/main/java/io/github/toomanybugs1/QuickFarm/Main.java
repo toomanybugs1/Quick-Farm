@@ -1,8 +1,6 @@
 package io.github.toomanybugs1.QuickFarm;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -38,7 +36,7 @@ public final class Main extends JavaPlugin implements Listener {
 
         enabledPlayers = this.getConfig().getStringList("players-enabled");
         if (enabledPlayers == null) {
-            enabledPlayers = new ArrayList<String>();
+            enabledPlayers = new ArrayList<>();
             getLogger().info("Player list is null.");
             getLogger().info(enabledPlayers.toString());
         }
@@ -156,18 +154,24 @@ public final class Main extends JavaPlugin implements Listener {
     private ItemStack getPlantableSeed(Block block) {
         // Get the seed corresponding to the block just broken.
         switch(block.getType()) {
-        case BEETROOTS:
-            return new ItemStack(Material.BEETROOT_SEEDS);
-        case CARROTS:
-            return new ItemStack(Material.CARROT);
-        case POTATOES:
-            return new ItemStack(Material.POTATO);
-        case WHEAT:
-            return new ItemStack(Material.WHEAT_SEEDS);
+            case BEETROOTS:
+                return new ItemStack(Material.BEETROOT_SEEDS);
+            case CARROTS:
+                return new ItemStack(Material.CARROT);
+            case POTATOES:
+                return new ItemStack(Material.POTATO);
+            case WHEAT:
+                return new ItemStack(Material.WHEAT_SEEDS);
+            case SUGAR_CANE:
+                return new ItemStack(Material.SUGAR_CANE);
+            case PUMPKIN_STEM:
+                return new ItemStack(Material.PUMPKIN_SEEDS);
+            case MELON_STEM:
+                return new ItemStack(Material.MELON_SEEDS);
             // case NEW_FARM_PLANT:
-            // return new ItemStack(Material.NEW_FARM_SEED);
-        default:  // Indicate no corresponding seed if "block" wasn't a valid crop.
-            return null;
+                // return new ItemStack(Material.NEW_FARM_SEED);
+            default:  // Indicate no corresponding seed if "block" wasn't a valid crop.
+                return null;
         }
     }
 
