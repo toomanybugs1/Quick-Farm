@@ -2,6 +2,18 @@ package io.github.toomanybugs1.QuickFarm;
 
 import java.util.*;
 
+import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Ageable;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.gmail.nossr50.mcMMO;
@@ -10,18 +22,7 @@ import com.gmail.nossr50.datatypes.player.McMMOPlayer;
 import com.gmail.nossr50.datatypes.skills.PrimarySkillType;
 import com.gmail.nossr50.util.player.UserManager;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.data.Ageable;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 public final class Main extends JavaPlugin implements Listener {
 
@@ -30,124 +31,131 @@ public final class Main extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+
         Bukkit.getPluginManager().registerEvents(this, this);
 
         this.saveDefaultConfig();
 
-        enabledPlayers = this.getConfig().getStringList("players-enabled");
-        if (enabledPlayers == null) {
-            enabledPlayers = new ArrayList<>();
-            getLogger().info("Player list is null.");
-            getLogger().info(enabledPlayers.toString());
-        }
+        this.enabledPlayers = this.getConfig().getStringList("players-enabled");
 
-        mcmmo = (mcMMO) Bukkit.getServer().getPluginManager().getPlugin("mcMMO");
-        if (mcmmo == null) getLogger().info("This server does not have mcMMO. Disabling mcMMO features.");
-        else getLogger().info("mcMMO has been detected!");
+        this.mcmmo = (mcMMO) Bukkit.getServer().getPluginManager().getPlugin("mcMMO");
+
+        if (this.mcmmo == null)
+            getLogger().info("This server does not have mcMMO. Disabling mcMMO features.");
+        else
+            getLogger().info("mcMMO has been detected!");
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, Command cmd, @NotNull String label, String[] args) {
 
-        if (cmd.getName().equalsIgnoreCase("togglequickfarm")) {
-            if (args.length != 0) {
-                return false;
-            } else if (sender instanceof Player) {
-                //get latest config
-                if (this.getConfig().getList("players-enabled") != null)
-                    enabledPlayers = this.getConfig().getStringList("players-enabled");
+        if (!cmd.getName().equalsIgnoreCase("togglequickfarm") || args.length != 0)
+            return false;
 
-                Player player = (Player) sender;
-                //remove returns true if the name is in the list
-                if (!enabledPlayers.remove(player.getName())) {
-                    enabledPlayers.add(player.getName());
-                    sender.sendMessage(ChatColor.GOLD + "[QuickFarm] " + ChatColor.DARK_GREEN + "Quick farming enabled.");
-                } else {
-                    sender.sendMessage(ChatColor.GOLD + "[QuickFarm] " + ChatColor.DARK_RED + "Quick farming disabled.");
-                }
+        if (sender instanceof Player) {
 
-                this.getConfig().set("players-enabled", enabledPlayers);
-                this.saveConfig();
+            this.enabledPlayers = this.getConfig().getStringList("players-enabled");
 
-                return true;
+            String playerName = sender.getName();
 
+            if (this.enabledPlayers.contains(playerName)) {
+                this.enabledPlayers.remove(playerName);
+
+                sender.sendMessage(ChatColor.GOLD + "[QuickFarm] "
+                    + ChatColor.DARK_RED + "Quick farming disabled.");
             } else {
-                sender.sendMessage("Only players can use this command.");
-                return true;
+                this.enabledPlayers.add(playerName);
+
+                sender.sendMessage(ChatColor.GOLD + "[QuickFarm] "
+                    + ChatColor.DARK_GREEN + "Quick farming enabled.");
             }
+
+            this.getConfig().set("players-enabled", this.enabledPlayers);
+            this.saveConfig();
+        } else {
+            sender.sendMessage("Only players can use this command.");
         }
 
-        return false;
+
+        return true;
     }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         //some events were passing null blocks (specifically when using super breaker in mcmmo)
-        if (event != null) {
-            Player player = event.getPlayer();
-            if (enabledPlayers.contains(player.getName()))  // Ensure the player has permission to use this plugin.
-                tryAutoReplant(event, player);
-        }
+        if (event == null)
+            return;
+
+        Player player = event.getPlayer();
+
+        if (this.enabledPlayers.contains(player.getName()))  // Ensure the player has permission to use this plugin.
+            this.tryAutoReplant(event, player);
     }
 
     /**
      * Attempts to automatically replant a crop from seeds in the player's inventory.
-     * 
+     *
      * Fails under any of the following conditions:
      * <ul>
      *     <li>the block broken wasn't a crop</li>
      *     <li>the player doesn't have the corresponding seeds in his/her inventory.</li>
      * </ul>
-     * 
+     *
      * @param event The event containing information about the block that was broken
      * @param player The player whose inventory will be searched for an auto-plantable seed.
      */
     private void tryAutoReplant(BlockBreakEvent event, Player player) {
         Block block = event.getBlock();
-        ItemStack seed = getPlantableSeed(block);  // If the broken block wasn't a crop, "seed" will be null, ...
+        ItemStack seed = this.getPlantableSeed(block);
+        BlockData blockData = block.getBlockData();
 
-        //we need to make sure seed is not null because most blocks do not have blockdata that
-        //can be casted to Ageable
-        if (seed != null) {
-            Ageable age = (Ageable) block.getBlockData();
+        if (seed == null || !(blockData instanceof Ageable))
+            return;
 
-            if (player.getInventory().containsAtLeast(seed, 1)) {  // ... so the "contains" check will fail.
-                event.setCancelled(true);
+        Ageable blockAge = (Ageable) block.getBlockData();
+        PlayerInventory playerInventory = player.getInventory();
 
-                // Drop all items that would normally be dropped.
-                Collection<ItemStack> drops = block.getDrops(new ItemStack(Material.IRON_HOE), player);
-                for (ItemStack drop : drops)
-                    player.getWorld().dropItemNaturally(block.getLocation(), drop);
+        if (playerInventory.containsAtLeast(seed, 1)) {
+            event.setCancelled(true);
 
-                // Auto-replant the crop
-                Block b = block.getLocation().getBlock();  // QUESTION: Is this not just getting a copy of itself?
-                b.setType(block.getType());                // If so, then these first two lines can be removed...
-                Ageable newBlockAge = (Ageable) b.getBlockData();  // ... and here "b" would be replaced by "block"
-                newBlockAge.setAge(0);
+            // Drop all items that would normally be dropped.
+            Collection<ItemStack> drops = block.getDrops(new ItemStack(Material.IRON_HOE), player);
 
-                // Update the player's inventory to reflect the use of the seed during auto-replanting.
-                for (int i = 0; i < player.getInventory().getSize(); i++) {
-                    ItemStack itm = player.getInventory().getItem(i);
-                    if (itm != null && itm.getType().equals(seed.getType())) {  // Find the item we just planted,
-                        itm.setAmount(itm.getAmount() - 1);  // decrement the item's amount
-                        player.getInventory().setItem(i, itm.getAmount() > 0 ? itm : null);  // Remove item if amt == 0
-                        player.updateInventory();  // update the player's inventory
-                        break;  // Once found and updated, no need to continue looping through the inventory.
-                    }
-                }
+            World playerWorld = player.getWorld();
+            Location blockLocation = block.getLocation();
 
-                // mcmmo should only reward xp if the crop is fully grown
-                if (mcmmo != null && age.getAge() == age.getMaximumAge()) {
-                    McMMOPlayer mcPlayer = UserManager.getPlayer(player);
-                    ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
-                }
+            for (ItemStack drop : drops)
+                playerWorld.dropItemNaturally(blockLocation, drop);
+
+            // Auto-replant the crop
+            final int previousAge = blockAge.getAge();
+            blockAge.setAge(0);
+            block.setBlockData(blockAge);
+
+            // Update the player's inventory to reflect the use of the seed during auto-replanting.
+            final int stackSlot = playerInventory.first(seed.getType());
+            ItemStack seedStack = playerInventory.getItem(stackSlot);
+
+
+            final int newSeedAmount = seedStack.getAmount() - 1;
+            seedStack.setAmount(newSeedAmount);
+
+            playerInventory.setItem(stackSlot, newSeedAmount > 0 ?
+                seedStack : null
+            );
+
+            // mcmmo should only reward xp if the crop is fully grown
+            if (this.mcmmo != null && previousAge == blockAge.getMaximumAge()) {
+                McMMOPlayer mcPlayer = UserManager.getPlayer(player);
+                ExperienceAPI.addXpFromBlockBySkill(block.getState(), mcPlayer, PrimarySkillType.HERBALISM);
             }
         }
+
     }
 
     /**
      * Returns the plantable version of the given block, if one exists.
-     * 
+     *
      * @param block The block of which to get the plantable version.
      * @return The plantable version of the given block if it exists, otherwise null.
      */
