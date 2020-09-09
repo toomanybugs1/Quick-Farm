@@ -1,7 +1,6 @@
 package io.github.toomanybugs1.QuickFarm;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -84,7 +83,7 @@ public final class Main extends JavaPlugin implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         //some events were passing null blocks (specifically when using super breaker in mcmmo)
-        if (event == null)
+        if (event == null && !event.getBlock().equals(Material.AIR))
             return;
 
         Player player = event.getPlayer();
@@ -126,7 +125,8 @@ public final class Main extends JavaPlugin implements Listener {
             Location blockLocation = block.getLocation();
 
             for (ItemStack drop : drops)
-                playerWorld.dropItemNaturally(blockLocation, drop);
+                if (!drop.getType().equals(Material.AIR))
+                    playerWorld.dropItemNaturally(blockLocation, drop);
 
             // Auto-replant the crop
             final int previousAge = blockAge.getAge();
@@ -171,8 +171,16 @@ public final class Main extends JavaPlugin implements Listener {
                 return new ItemStack(Material.POTATO);
             case WHEAT:
                 return new ItemStack(Material.WHEAT_SEEDS);
+            case SUGAR_CANE:
+                return new ItemStack(Material.SUGAR_CANE);
+            case PUMPKIN_STEM:
+            case ATTACHED_PUMPKIN_STEM:  // Fall through intentional
+                return new ItemStack(Material.PUMPKIN_SEEDS);
+            case MELON_STEM:
+            case ATTACHED_MELON_STEM:  // Fall through intentional
+                return new ItemStack(Material.MELON_SEEDS);
             // case NEW_FARM_PLANT:
-            // return new ItemStack(Material.NEW_FARM_SEED);
+                // return new ItemStack(Material.NEW_FARM_SEED);
             default:  // Indicate no corresponding seed if "block" wasn't a valid crop.
                 return null;
         }
