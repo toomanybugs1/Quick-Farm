@@ -171,8 +171,6 @@ public final class Main extends JavaPlugin implements Listener {
                 return new ItemStack(Material.POTATO);
             case WHEAT:
                 return new ItemStack(Material.WHEAT_SEEDS);
-            case SUGAR_CANE:
-                return new ItemStack(Material.SUGAR_CANE);
             case PUMPKIN_STEM:
             case ATTACHED_PUMPKIN_STEM:  // Fall through intentional
                 return new ItemStack(Material.PUMPKIN_SEEDS);
